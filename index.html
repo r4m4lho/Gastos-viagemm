@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gastos da viagem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: practical travel companion, calm, quick to use with one thumb
+   IDEA: a London bus ticket / till receipt that keeps a running total
+   PICTURE: the total ticket (BRL big, GBP beside) with category bars underneath
+   COLOUR and TYPE: bus red #c8102e, white paper, ink black; Jost titles + Inter
+   LAYOUT: single column on phone; ticket + form side by side above 900px, list below */
+:root{color-scheme:light dark;--bg:light-dark(#f4f1ec,#121212);--paper:light-dark(#fff,#1d1d1d);--ink:light-dark(#141414,#f2efea);--mute:light-dark(#6b6660,#a39d95);--line:light-dark(#e4dfd8,#333);--red:#c8102e;--red2:light-dark(#fbe7ea,#3a1218)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big{font-family:Jost,Inter,sans-serif}
+header{background:var(--red);color:#fff;padding:18px max(5vw,16px) 64px}
+header h1{margin:0;font-size:clamp(28px,6vw,40px);line-height:1.05;font-weight:700}
+header p{margin:4px 0 0;opacity:.9;font-size:15px}
+main{max-width:1100px;margin:-48px auto 0;padding:0 max(4vw,12px) 48px;display:grid;gap:16px}
+@media(min-width:900px){.top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}}
+.top{display:grid;gap:16px}
+.card{background:var(--paper);border-radius:14px;padding:20px;box-shadow:0 1px 2px #0000001a,0 8px 24px #00000012}
+.ticket{position:relative;border-top:8px solid var(--red)}
+.ticket::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:radial-gradient(circle at 8px 0,transparent 6px,var(--paper) 6.5px) 0 0/16px 8px}
+.lbl{font-size:13px;color:var(--mute);margin:0}
+.big{font-size:clamp(36px,9vw,52px);font-weight:700;line-height:1.05;margin:2px 0 4px;white-space:nowrap}
+.sub{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--mute)}
+.sub b{color:var(--ink);font-weight:600;white-space:nowrap}
+.bars{margin-top:18px;display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:7.5em minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px;cursor:pointer;background:none;border:0;padding:0;color:inherit;text-align:left;font-family:inherit}
+.bar .t{height:12px;border-radius:6px;background:var(--line);overflow:hidden}.bar .t i{display:block;height:100%;border-radius:6px}
+.bar .v{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.bar[aria-pressed=true]{font-weight:600}
+h2{font-size:20px;margin:0 0 12px;line-height:1.2}
+form{display:grid;gap:12px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+label{display:grid;gap:4px;font-size:13px;color:var(--mute)}
+input,select{font:16px Inter,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:46px;width:100%}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{min-height:46px;border:0;background:var(--bg);color:var(--ink);font:600 16px Inter,sans-serif;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--red);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:500 14px Inter,sans-serif;cursor:pointer;display:flex;align-items:center;gap:6px}
+.chips button[aria-pressed=true]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.prev{font-size:14px;color:var(--mute);min-height:1.5em}
+.btn{min-height:48px;border:0;border-radius:10px;background:var(--red);color:#fff;font:600 16px Inter,sans-serif;cursor:pointer;padding:0 18px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btns{display:flex;gap:10px;flex-wrap:wrap}.btns .btn{flex:1}
+.rate{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--mute);margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.rate input{width:7em;min-height:40px;padding:6px 10px}
+.listhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.day{margin-top:14px}.day h3{font:600 14px Inter,sans-serif;color:var(--mute);margin:0 0 4px;display:flex;justify-content:space-between}
+.it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.it .d{font-weight:500;overflow-wrap:anywhere}.it .c{font-size:13px;color:var(--mute)}
+.it .a{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.it .a small{display:block;color:var(--mute);font-size:13px}
+.empty{color:var(--mute);text-align:center;padding:28px 0}
+.status{font-size:13px;color:var(--mute);text-align:center}
+.status.warn{color:var(--red)}
+dialog{border:0;border-radius:14px;background:var(--paper);color:var(--ink);padding:20px;width:min(420px,92vw)}
+dialog::backdrop{background:#0008}
+@media(prefers-reduced-motion:no-preference){.bar .t i{transition:width .4s ease}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gastos da viagem</h1>
+  <p>Brasil → Londres · tudo convertido para real</p>
+</header>
+<main>
+  <div class="top">
+    <section class="card ticket" aria-label="Resumo">
+      <p class="lbl">Total gasto até agora</p>
+      <div class="big" id="tot">R$ 0,00</div>
+      <div class="sub" id="totsub"></div>
+      <div class="bars" id="bars"></div>
+      <div class="rate">
+        <span>Cotação: £1 =</span><span>R$</span>
+        <input id="rate" inputmode="decimal" aria-label="Cotação da libra em reais">
+        <span id="ratehint">usada nos próximos gastos em libra</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 id="ftitle">Novo gasto</h2>
+      <form id="f" autocomplete="off">
+        <label>Descrição<input id="desc" placeholder="Ex.: almoço em Camden" maxlength="80"></label>
+        <div class="row">
+          <label>Valor<input id="amt" inputmode="decimal" placeholder="0,00" required></label>
+          <label>Moeda<div class="seg" id="cur"><button type="button" data-c="GBP" aria-pressed="true">£ Libra</button><button type="button" data-c="BRL" aria-pressed="false">R$ Real</button></div></label>
+        </div>
+        <div class="chips" id="cats" role="group" aria-label="Categoria"></div>
+        <div class="row">
+          <label>Data<input id="date" type="date"></label>
+          <label>Cotação deste gasto<input id="irate" inputmode="decimal"></label>
+        </div>
+        <div class="prev" id="prev"></div>
+        <div class="btns">
+          <button class="btn" id="save">Adicionar gasto</button>
+          <button class="btn ghost" type="button" id="cancel" hidden>Cancelar</button>
+          <button class="btn ghost" type="button" id="del" hidden>Excluir</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="listhead">
+      <h2 style="margin:0">Lançamentos</h2>
+      <div class="btns"><button class="btn ghost" id="copy" type="button">Copiar lista</button><button class="btn ghost" id="bkp" type="button">Copiar backup</button><button class="btn ghost" id="rst" type="button">Restaurar</button></div>
+    </div>
+    <div id="list"></div>
+  </section>
+  <p class="status" id="status"></p>
+</main>
+
+<dialog id="dlg"><p id="dlgmsg" style="margin:0 0 16px"></p><div class="btns"><button class="btn ghost" id="dno">Voltar</button><button class="btn" id="dyes">Excluir</button></div></dialog>
+
+<dialog id="rdlg"><p style="margin:0 0 10px">Cole aqui o texto do backup. Isso substitui os gastos atuais.</p><textarea id="rtxt" rows="5" style="width:100%;font:14px Inter,sans-serif;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></textarea><p id="rerr" class="status warn"></p><div class="btns"><button class="btn ghost" id="rno">Voltar</button><button class="btn" id="ryes">Restaurar</button></div></dialog>
+<script>
+{
+const CATS=[["alim","Alimentação","#e0812b"],["transp","Transporte","#1d6fd1"],["passeio","Passeios","#2e9e6a"],["presente","Presentes","#c8102e"],["compras","Compras","#8a4fd0"],["hosp","Hospedagem","#7a6a58"],["outros","Outros","#9a9a9a"]];
+const CAT=Object.fromEntries(CATS.map(c=>[c[0],c]));
+const $=id=>document.getElementById(id);
+const brl=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+const gbp=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'});
+const num=v=>{v=String(v).trim().replace(/\s/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return isFinite(n)?n:NaN};
+const fmtN=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const LS='gastos-viagem-mae-v1';
+
+let S={rev:0,rate:6.87,items:[]},canSave=true;
+try{const L=JSON.parse(localStorage.getItem(LS)||'null');if(L&&Array.isArray(L.items))S=L}catch(e){canSave=false}
+let cur='GBP',cat='alim',editing=null,filter=null;
+
+const toBRL=it=>it.cur==='BRL'?it.amt:it.amt*it.rate;
+
+function catChips(){$('cats').innerHTML=CATS.map(c=>`<button type="button" data-k="${c[0]}" aria-pressed="${c[0]===cat}"><span class="dot" style="background:${c[2]}"></span>${c[1]}</button>`).join('')}
+function setCur(c){cur=c;for(const b of $('cur').children)b.setAttribute('aria-pressed',b.dataset.c===c);$('irate').disabled=c==='BRL';preview()}
+function preview(){const a=num($('amt').value),r=num($('irate').value);
+  if(!isFinite(a)||a<=0){$('prev').textContent='';return}
+  $('prev').textContent=cur==='GBP'?(isFinite(r)?`${gbp.format(a)} ≈ ${brl.format(a*r)}`:''):`${brl.format(a)} (gasto em real)`}
+
+function render(){
+  const items=[...S.items].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  const total=items.reduce((s,i)=>s+toBRL(i),0);
+  const inGBP=items.filter(i=>i.cur==='GBP').reduce((s,i)=>s+i.amt,0);
+  const inBRL=items.filter(i=>i.cur==='BRL').reduce((s,i)=>s+i.amt,0);
+  const days=new Set(items.map(i=>i.date)).size;
+  $('tot').textContent=brl.format(total);
+  $('totsub').innerHTML=`<span>Em libras <b>${esc(gbp.format(inGBP))}</b></span><span>Pago em real <b>${esc(brl.format(inBRL))}</b></span><span>${items.length} gastos · média/dia <b>${esc(brl.format(days?total/days:0))}</b></span>`;
+  const by=CATS.map(c=>[c,items.filter(i=>i.cat===c[0]).reduce((s,i)=>s+toBRL(i),0)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  const max=by.length?by[0][1]:1;
+  $('bars').innerHTML=by.length?by.map(([c,v])=>`<button class="bar" type="button" data-k="${c[0]}" aria-pressed="${filter===c[0]}" title="Filtrar ${c[1]}"><span>${c[1]}</span><span class="t"><i style="width:${(v/max*100).toFixed(1)}%;background:${c[2]}"></i></span><span class="v">${esc(brl.format(v))}</span></button>`).join(''):'<p class="lbl">As categorias aparecem aqui conforme você lança os gastos.</p>';
+  $('rate').value=fmtN(S.rate);
+  const shown=filter?items.filter(i=>i.cat===filter):items;
+  if(!shown.length){$('list').innerHTML=`<p class="empty">${filter?'Nenhum gasto nesta categoria.':'Nenhum gasto ainda. Lance o primeiro ao lado.'}</p>`}
+  else{
+    const g={};for(const i of shown)(g[i.date]??=[]).push(i);
+    $('list').innerHTML=(filter?`<p class="lbl">Mostrando só ${esc(CAT[filter][1])} · <a href="#" id="clr">ver todos</a></p>`:'')+Object.keys(g).map(d=>{
+      const sum=g[d].reduce((s,i)=>s+toBRL(i),0);
+      const dl=new Date(d+'T12:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+      return `<div class="day"><h3><span>${esc(dl)}</span><span>${esc(brl.format(sum))}</span></h3>`+g[d].map(i=>{const c=CAT[i.cat]||CAT.outros;
+        return `<div class="it" data-id="${i.id}" role="button" tabindex="0"><span class="dot" style="background:${c[2]}"></span><div><div class="d">${esc(i.desc||c[1])}</div><div class="c">${c[1]}${i.cur==='GBP'?' · £1 = R$ '+esc(fmtN(i.rate)):''}</div></div><div class="a">${esc(brl.format(toBRL(i)))}${i.cur==='GBP'?`<small>${esc(gbp.format(i.amt))}</small>`:''}</div></div>`}).join('')+'</div>'}).join('');
+  }
+  status();
+}
+function status(msg){const el=$('status');
+  if(msg){el.textContent=msg;el.className='status';return}
+  if(!canSave){el.textContent='Atenção: este navegador não está guardando os dados. Abra o link no Chrome ou Safari normal (fora da aba anônima).';el.className='status warn'}
+  else{el.textContent=S.items.length?'Tudo salvo neste celular.':'';el.className='status'}}
+
+function resetForm(){editing=null;$('f').reset();$('date').value=today();$('irate').value=fmtN(S.rate);setCur(cur);cat=cat||'alim';catChips();
+  $('ftitle').textContent='Novo gasto';$('save').textContent='Adicionar gasto';$('cancel').hidden=$('del').hidden=true;preview()}
+function edit(id){const i=S.items.find(x=>x.id===id);if(!i)return;editing=id;
+  $('desc').value=i.desc;$('amt').value=fmtN(i.amt);$('date').value=i.date;cat=i.cat;catChips();setCur(i.cur);$('irate').value=fmtN(i.rate||S.rate);
+  $('ftitle').textContent='Editar gasto';$('save').textContent='Salvar alteração';$('cancel').hidden=$('del').hidden=false;preview();
+  $('f').scrollIntoView({behavior:'smooth',block:'center'})}
+
+function commit(){S.rev=Date.now();
+  try{localStorage.setItem(LS,JSON.stringify(S));canSave=true}catch(e){canSave=false}
+  render()}
+$('cats').onclick=e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.k;catChips()};
+$('cur').onclick=e=>{const b=e.target.closest('button');if(b)setCur(b.dataset.c)};
+$('amt').oninput=$('irate').oninput=preview;
+$('f').onsubmit=e=>{e.preventDefault();
+  const amt=num($('amt').value);if(!isFinite(amt)||amt<=0){$('amt').focus();$('prev').textContent='Informe um valor.';return}
+  let rate=num($('irate').value);if(cur==='GBP'&&!(rate>0)){$('irate').focus();$('prev').textContent='Informe a cotação.';return}
+  const it={id:editing||Date.now(),desc:$('desc').value.trim(),amt,cur,cat,date:$('date').value||today(),rate:cur==='GBP'?rate:null};
+  if(editing){const k=S.items.findIndex(x=>x.id===editing);S.items[k]=it}else S.items.push(it);
+  resetForm();commit()};
+$('cancel').onclick=resetForm;
+$('del').onclick=()=>{const i=S.items.find(x=>x.id===editing);$('dlgmsg').textContent=`Excluir "${i.desc||CAT[i.cat][1]}" (${brl.format(toBRL(i))})?`;$('dlg').showModal()};
+$('dno').onclick=()=>$('dlg').close();
+$('dyes').onclick=()=>{S.items=S.items.filter(x=>x.id!==editing);$('dlg').close();resetForm();commit()};
+$('rate').onchange=()=>{const r=num($('rate').value);if(r>0){S.rate=r;if(!editing)$('irate').value=fmtN(r);commit()}else $('rate').value=fmtN(S.rate)};
+$('list').onclick=e=>{if(e.target.id==='clr'){e.preventDefault();filter=null;render();return}const r=e.target.closest('.it');if(r)edit(+r.dataset.id)};
+$('list').onkeydown=e=>{const r=e.target.closest('.it');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();edit(+r.dataset.id)}};
+$('bars').onclick=e=>{const b=e.target.closest('.bar');if(!b)return;filter=filter===b.dataset.k?null:b.dataset.k;render();$('list').scrollIntoView({behavior:'smooth',block:'start'})};
+$('copy').onclick=async()=>{
+  const rows=[...S.items].sort((a,b)=>a.date.localeCompare(b.date)).map(i=>[i.date,i.desc,CAT[i.cat][1],i.cur==='GBP'?'£ '+fmtN(i.amt):'',i.cur==='GBP'?fmtN(i.rate):'',fmtN(toBRL(i))].join('\t'));
+  const txt=['Data\tDescrição\tCategoria\tValor em libra\tCotação\tValor em real',...rows,'\t\t\t\tTotal\t'+fmtN(S.items.reduce((s,i)=>s+toBRL(i),0))].join('\n');
+  try{await navigator.clipboard.writeText(txt);status('Lista copiada — cole numa planilha ou mensagem.')}catch(e){status('Não foi possível copiar neste aparelho.')}};
+
+$('bkp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify({rate:S.rate,items:S.items}));status('Backup copiado. Cole numa mensagem para você mesma no WhatsApp.')}catch(e){status('Não foi possível copiar neste aparelho.')}};
+$('rst').onclick=()=>{$('rtxt').value='';$('rdlg').showModal()};
+$('rno').onclick=()=>$('rdlg').close();
+$('ryes').onclick=()=>{try{const d=JSON.parse($('rtxt').value);if(!Array.isArray(d.items))throw 0;S.items=d.items;if(d.rate>0)S.rate=d.rate;$('rdlg').close();resetForm();commit();status('Backup restaurado.')}catch(e){$('rerr').textContent='Texto de backup inválido.'}};
+resetForm();render();
+}
+</script>
+</body>
+</html>
