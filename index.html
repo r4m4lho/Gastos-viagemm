@@ -52,8 +52,16 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--red);outli
 .btn{min-height:48px;border:0;border-radius:10px;background:var(--red);color:#fff;font:600 16px Inter,sans-serif;cursor:pointer;padding:0 18px}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .btns{display:flex;gap:10px;flex-wrap:wrap}.btns .btn{flex:1}
-.rate{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--mute);margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+.rate{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--mute)}
 .rate input{width:7em;min-height:40px;padding:6px 10px}
+.conv{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line);display:grid;gap:8px}
+.convh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+#avg{font-size:14px;color:var(--mute);white-space:nowrap}#avg b{color:var(--ink)}
+.cv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:14px;padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.cv small{color:var(--mute);font-size:13px}.cv .a{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+.crow .btn{min-height:46px}
+@media(max-width:420px){.crow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.crow .btn{grid-column:1/-1}}
 .listhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .day{margin-top:14px}.day h3{font:600 14px Inter,sans-serif;color:var(--mute);margin:0 0 4px;display:flex;justify-content:space-between}
 .it{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
@@ -79,10 +87,17 @@ dialog::backdrop{background:#0008}
       <div class="big" id="tot">R$ 0,00</div>
       <div class="sub" id="totsub"></div>
       <div class="bars" id="bars"></div>
-      <div class="rate">
-        <span>Cotação: £1 =</span><span>R$</span>
-        <input id="rate" inputmode="decimal" aria-label="Cotação da libra em reais">
-        <span id="ratehint">usada nos próximos gastos em libra</span>
+      <div class="conv">
+        <div class="convh"><h2 style="margin:0;font-size:17px">Conversões na Revolut</h2><span id="avg"></span></div>
+        <p class="lbl" id="saldo"></p>
+        <div id="convs"></div>
+        <form id="cf" class="crow" autocomplete="off">
+          <label>Reais convertidos<input id="cbrl" inputmode="decimal" placeholder="100,00"></label>
+          <label>Libras recebidas<input id="cgbp" inputmode="decimal" placeholder="13,07"></label>
+          <button class="btn">Adicionar</button>
+        </form>
+        <p class="prev" id="cprev"></p>
+        <div class="rate" id="manual"><span>Sem conversão registrada, usar £1 = R$</span><input id="rate" inputmode="decimal" aria-label="Cotação manual"></div>
       </div>
     </section>
 
@@ -97,7 +112,7 @@ dialog::backdrop{background:#0008}
         <div class="chips" id="cats" role="group" aria-label="Categoria"></div>
         <div class="row">
           <label>Data<input id="date" type="date"></label>
-          <label>Cotação deste gasto<input id="irate" inputmode="decimal"></label>
+          <label>Cotação (£1 em R$)<input id="irate" inputmode="decimal"></label>
         </div>
         <div class="prev" id="prev"></div>
         <div class="btns">
@@ -128,7 +143,7 @@ const CATS=[["alim","Alimentação","#e0812b"],["transp","Transporte","#1d6fd1"]
 const CAT=Object.fromEntries(CATS.map(c=>[c[0],c]));
 const $=id=>document.getElementById(id);
 const brl=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
-const gbp=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'});
+const gbp=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'GBP'});
 const num=v=>{v=String(v).trim().replace(/\s/g,'');if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');const n=parseFloat(v);return isFinite(n)?n:NaN};
 const fmtN=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -137,6 +152,10 @@ const LS='gastos-viagem-mae-v1';
 
 let S={rev:0,rate:6.87,items:[]},canSave=true;
 try{const L=JSON.parse(localStorage.getItem(LS)||'null');if(L&&Array.isArray(L.items))S=L}catch(e){canSave=false}
+if(!Array.isArray(S.convs))S.convs=[];
+let onDel=null;
+const sumC=k=>S.convs.reduce((s,c)=>s+c[k],0);
+const curRate=()=>{const g=sumC('gbp');return g>0?sumC('brl')/g:S.rate};
 let cur='GBP',cat='alim',editing=null,filter=null;
 
 const toBRL=it=>it.cur==='BRL'?it.amt:it.amt*it.rate;
@@ -159,6 +178,11 @@ function render(){
   const max=by.length?by[0][1]:1;
   $('bars').innerHTML=by.length?by.map(([c,v])=>`<button class="bar" type="button" data-k="${c[0]}" aria-pressed="${filter===c[0]}" title="Filtrar ${c[1]}"><span>${c[1]}</span><span class="t"><i style="width:${(v/max*100).toFixed(1)}%;background:${c[2]}"></i></span><span class="v">${esc(brl.format(v))}</span></button>`).join(''):'<p class="lbl">As categorias aparecem aqui conforme você lança os gastos.</p>';
   $('rate').value=fmtN(S.rate);
+  $('manual').hidden=S.convs.length>0;
+  const cg=sumC('gbp');
+  $('avg').innerHTML=S.convs.length?`média <b>£1 = ${esc('R$ '+fmtN(curRate()))}</b>`:'';
+  $('saldo').textContent=S.convs.length?`Saldo em libras: ${gbp.format(cg-inGBP)} (convertido ${gbp.format(cg)} − gasto ${gbp.format(inGBP)})`:'Registre aqui cada vez que converter reais em libras no app. A cotação dos gastos em libra passa a ser a média dessas conversões.';
+  $('convs').innerHTML=[...S.convs].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(c=>`<div class="cv" data-id="${c.id}" role="button" tabindex="0"><span>${esc(new Date(c.date+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}))} · ${esc(brl.format(c.brl))} → ${esc(gbp.format(c.gbp))}</span><span class="a"><small>£1 = R$ ${esc(fmtN(c.brl/c.gbp))}</small></span></div>`).join('');
   const shown=filter?items.filter(i=>i.cat===filter):items;
   if(!shown.length){$('list').innerHTML=`<p class="empty">${filter?'Nenhum gasto nesta categoria.':'Nenhum gasto ainda. Lance o primeiro ao lado.'}</p>`}
   else{
@@ -176,10 +200,10 @@ function status(msg){const el=$('status');
   if(!canSave){el.textContent='Atenção: este navegador não está guardando os dados. Abra o link no Chrome ou Safari normal (fora da aba anônima).';el.className='status warn'}
   else{el.textContent=S.items.length?'Tudo salvo neste celular.':'';el.className='status'}}
 
-function resetForm(){editing=null;$('f').reset();$('date').value=today();$('irate').value=fmtN(S.rate);setCur(cur);cat=cat||'alim';catChips();
+function resetForm(){editing=null;$('f').reset();$('date').value=today();$('irate').value=fmtN(curRate());setCur(cur);cat=cat||'alim';catChips();
   $('ftitle').textContent='Novo gasto';$('save').textContent='Adicionar gasto';$('cancel').hidden=$('del').hidden=true;preview()}
 function edit(id){const i=S.items.find(x=>x.id===id);if(!i)return;editing=id;
-  $('desc').value=i.desc;$('amt').value=fmtN(i.amt);$('date').value=i.date;cat=i.cat;catChips();setCur(i.cur);$('irate').value=fmtN(i.rate||S.rate);
+  $('desc').value=i.desc;$('amt').value=fmtN(i.amt);$('date').value=i.date;cat=i.cat;catChips();setCur(i.cur);$('irate').value=fmtN(i.rate||curRate());
   $('ftitle').textContent='Editar gasto';$('save').textContent='Salvar alteração';$('cancel').hidden=$('del').hidden=false;preview();
   $('f').scrollIntoView({behavior:'smooth',block:'center'})}
 
@@ -196,10 +220,17 @@ $('f').onsubmit=e=>{e.preventDefault();
   if(editing){const k=S.items.findIndex(x=>x.id===editing);S.items[k]=it}else S.items.push(it);
   resetForm();commit()};
 $('cancel').onclick=resetForm;
-$('del').onclick=()=>{const i=S.items.find(x=>x.id===editing);$('dlgmsg').textContent=`Excluir "${i.desc||CAT[i.cat][1]}" (${brl.format(toBRL(i))})?`;$('dlg').showModal()};
+$('del').onclick=()=>{const i=S.items.find(x=>x.id===editing);$('dlgmsg').textContent=`Excluir "${i.desc||CAT[i.cat][1]}" (${brl.format(toBRL(i))})?`;onDel=()=>{S.items=S.items.filter(x=>x.id!==editing);resetForm()};$('dlg').showModal()};
 $('dno').onclick=()=>$('dlg').close();
-$('dyes').onclick=()=>{S.items=S.items.filter(x=>x.id!==editing);$('dlg').close();resetForm();commit()};
-$('rate').onchange=()=>{const r=num($('rate').value);if(r>0){S.rate=r;if(!editing)$('irate').value=fmtN(r);commit()}else $('rate').value=fmtN(S.rate)};
+$('dyes').onclick=()=>{if(onDel)onDel();onDel=null;$('dlg').close();commit()};
+$('cf').onsubmit=e=>{e.preventDefault();const b=num($('cbrl').value),g=num($('cgbp').value);
+  if(!(b>0)||!(g>0)){$('cprev').textContent='Preencha os reais convertidos e as libras recebidas.';return}
+  S.convs.push({id:Date.now(),date:today(),brl:b,gbp:g});$('cbrl').value=$('cgbp').value='';$('cprev').textContent='';
+  if(!editing)$('irate').value=fmtN(curRate());commit();if(!editing)$('irate').value=fmtN(curRate());preview()};
+$('cbrl').oninput=$('cgbp').oninput=()=>{const b=num($('cbrl').value),g=num($('cgbp').value);$('cprev').textContent=b>0&&g>0?`£1 = R$ ${fmtN(b/g)}`:''};
+$('convs').onclick=e=>{const r=e.target.closest('.cv');if(!r)return;const c=S.convs.find(x=>x.id===+r.dataset.id);
+  $('dlgmsg').textContent=`Excluir a conversão de ${brl.format(c.brl)} → ${gbp.format(c.gbp)}?`;onDel=()=>{S.convs=S.convs.filter(x=>x.id!==c.id);if(!editing)$('irate').value=fmtN(curRate())};$('dlg').showModal()};
+$('rate').onchange=()=>{const r=num($('rate').value);if(r>0){S.rate=r;if(!editing)$('irate').value=fmtN(curRate());commit()}else $('rate').value=fmtN(S.rate)};
 $('list').onclick=e=>{if(e.target.id==='clr'){e.preventDefault();filter=null;render();return}const r=e.target.closest('.it');if(r)edit(+r.dataset.id)};
 $('list').onkeydown=e=>{const r=e.target.closest('.it');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();edit(+r.dataset.id)}};
 $('bars').onclick=e=>{const b=e.target.closest('.bar');if(!b)return;filter=filter===b.dataset.k?null:b.dataset.k;render();$('list').scrollIntoView({behavior:'smooth',block:'start'})};
@@ -208,10 +239,10 @@ $('copy').onclick=async()=>{
   const txt=['Data\tDescrição\tCategoria\tValor em libra\tCotação\tValor em real',...rows,'\t\t\t\tTotal\t'+fmtN(S.items.reduce((s,i)=>s+toBRL(i),0))].join('\n');
   try{await navigator.clipboard.writeText(txt);status('Lista copiada — cole numa planilha ou mensagem.')}catch(e){status('Não foi possível copiar neste aparelho.')}};
 
-$('bkp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify({rate:S.rate,items:S.items}));status('Backup copiado. Cole numa mensagem para você mesma no WhatsApp.')}catch(e){status('Não foi possível copiar neste aparelho.')}};
+$('bkp').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify({rate:S.rate,items:S.items,convs:S.convs}));status('Backup copiado. Cole numa mensagem para você mesma no WhatsApp.')}catch(e){status('Não foi possível copiar neste aparelho.')}};
 $('rst').onclick=()=>{$('rtxt').value='';$('rdlg').showModal()};
 $('rno').onclick=()=>$('rdlg').close();
-$('ryes').onclick=()=>{try{const d=JSON.parse($('rtxt').value);if(!Array.isArray(d.items))throw 0;S.items=d.items;if(d.rate>0)S.rate=d.rate;$('rdlg').close();resetForm();commit();status('Backup restaurado.')}catch(e){$('rerr').textContent='Texto de backup inválido.'}};
+$('ryes').onclick=()=>{try{const d=JSON.parse($('rtxt').value);if(!Array.isArray(d.items))throw 0;S.items=d.items;if(d.rate>0)S.rate=d.rate;S.convs=Array.isArray(d.convs)?d.convs:[];$('rdlg').close();resetForm();commit();status('Backup restaurado.')}catch(e){$('rerr').textContent='Texto de backup inválido.'}};
 resetForm();render();
 }
 </script>
